@@ -9,8 +9,10 @@ import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RedisData;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * <p>
@@ -33,9 +36,11 @@ import java.util.concurrent.TimeUnit;
 public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IShopService {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final CacheClient cacheClient;
 
-    public ShopServiceImpl(StringRedisTemplate stringRedisTemplate) {
+    public ShopServiceImpl(StringRedisTemplate stringRedisTemplate, CacheClient cacheClient) {
         this.stringRedisTemplate = stringRedisTemplate;
+        this.cacheClient = cacheClient;
     }
 
     @Override
@@ -43,10 +48,18 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     public Result queryById(Long id) {
         //缓存穿透.redis和数据库中都没有，返回空值
         //Shop shop = queryWithPassThrough(id);
+        Shop shop = cacheClient.queryWithPassThrough("cache:shop", id, Shop.class,
+                new Function<Long, Shop>() {
+                    @Override
+                    public Shop apply(Long id) {
+                        return getById(id);
+                    }
+                }, RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
         //解决缓存击穿，使用互斥锁
 //         Shop shop = queryWithMutex(this, id);
         //解决缓存击穿，使用逻辑过期
-        Shop shop = queryWithLogicExpire(id);
+//        Shop shop = queryWithLogicExpire(id);
+//        cacheClient.queryWithLogicalExpire("cache:shop", id,Shop.class,this::getById,RedisConstants.CACHE_SHOP_TTL, TimeUnit.MINUTES);
         if (shop == null) {
             return Result.fail("空");
         }
