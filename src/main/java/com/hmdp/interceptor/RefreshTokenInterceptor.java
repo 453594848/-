@@ -26,19 +26,16 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
-
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String token = request.getHeader("authorization");
         if (StrUtil.isBlank(token)) {
-            response.setStatus(401);
-            return false;
+            return true;
         }
         //获取redis中用户
         Map<Object, Object> userMap = stringRedisTemplate.opsForHash().entries(RedisConstants.LOGIN_USER_KEY + token);
         if (userMap.isEmpty()) {
-            response.setStatus(401);
-            return false;
+              return true;
         }
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
 
@@ -50,12 +47,7 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-        HandlerInterceptor.super.postHandle(request, response, handler, modelAndView);
-    }
-
-    @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        HandlerInterceptor.super.afterCompletion(request, response, handler, ex);
+        UserHolder.removeUser();
     }
 }
