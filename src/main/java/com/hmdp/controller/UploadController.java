@@ -10,12 +10,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Slf4j
 @RestController
 @RequestMapping("upload")
 public class UploadController {
+
+    private int hash;
 
     @PostMapping("blog")
     public Result uploadImage(@RequestParam("file") MultipartFile image) {
@@ -34,12 +37,14 @@ public class UploadController {
         }
     }
 
+
     @GetMapping("/blog/delete")
     public Result deleteBlogImg(@RequestParam("name") String filename) {
         File file = new File(SystemConstants.IMAGE_UPLOAD_DIR, filename);
         if (file.isDirectory()) {
             return Result.fail("错误的文件名称");
         }
+        HashMap<Object, Object> objectObjectHashMap = new HashMap<>();
         FileUtil.del(file);
         return Result.ok();
     }
